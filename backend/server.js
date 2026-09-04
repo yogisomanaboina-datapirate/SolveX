@@ -10,3 +10,13 @@ initializeApp({
 const db = getFirestore();
 
 console.log("Firebase connected!");
+
+async function getUsers() {
+  const snapshot = await db.collection("users").get();
+
+  snapshot.forEach((doc) => {
+    console.log(doc.id, doc.data());
+  });
+}
+
+getUsers();
