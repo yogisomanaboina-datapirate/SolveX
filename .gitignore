@@ -7,3 +7,6 @@ firebase_service_account.json
 *.zip
 .vscode/
 .idea/
+.venv/
+agents/.venv/
+node_modules/
