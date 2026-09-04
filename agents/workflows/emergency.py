@@ -3,7 +3,7 @@ from typing import List
 from core.logging import logger, log_workflow_event
 from core.schemas import WorkflowStepLog
 from tools.ambulance_tools import evaluate_available_ambulances
-from tools.hospital_tools import evaluate_hospital_suitability
+from tools.hospital_tools import discover_nearby_hospitals, evaluate_hospital_suitability
 from agents.ambulance.ambulance_agent import ambulance_selection_agent
 from agents.ambulance.hospital_agent import hospital_matching_agent
 from agents.ambulance.schemas import (
@@ -11,6 +11,8 @@ from agents.ambulance.schemas import (
     EmergencyWorkflowRequest,
     EmergencyWorkflowResponse,
     HospitalInfo,
+    NearbyHospitalInfo,
+    NearbyHospitalsRequest,
     TriageRequest,
     TriageResponse,
 )
@@ -80,10 +82,25 @@ def run_triage_workflow(request: TriageRequest) -> TriageResponse:
     return response
 
 
+def run_nearby_hospitals_workflow(request: NearbyHospitalsRequest) -> List[NearbyHospitalInfo]:
+    """
+    Standalone non-LLM workflow to discover nearby hospitals around user GPS coordinates.
+    """
+    hospitals_input = [
+        h.model_dump() for h in (request.candidate_hospitals or DEFAULT_HOSPITALS)
+    ]
+    return discover_nearby_hospitals(
+        user_lat=request.user_location.lat,
+        user_lng=request.user_location.lng,
+        radius_km=request.radius_km,
+        candidate_hospitals=hospitals_input
+    )
+
+
 def run_full_emergency_workflow(request: EmergencyWorkflowRequest) -> EmergencyWorkflowResponse:
     """
     Execute complete end-to-end multi-agent emergency workflow:
-    Triage -> Hospital Tool -> Hospital Agent -> Ambulance Tool -> Ambulance Agent -> Dispatch -> Notification.
+    Triage -> Hospital Tool -> Hospital Agent -> Ambulance Tool -> Ambulance Agent -> Dispatch -> Nearby Real Hospitals.
     """
     logger.info("Executing Full Multi-Agent Emergency Response Workflow...")
     log_workflow_event("Emergency Workflow", 1, "Workflow Initiated", {"symptoms": request.symptoms})
@@ -94,7 +111,7 @@ def run_full_emergency_workflow(request: EmergencyWorkflowRequest) -> EmergencyW
             step_name="Workflow Initiated",
             timestamp=datetime.now(timezone.utc).isoformat(),
             status="completed",
-            details={"symptoms": request.symptoms}
+            details={"symptoms": request.symptoms, "location": request.patient_location.model_dump()}
         )
     ]
 
@@ -104,7 +121,7 @@ def run_full_emergency_workflow(request: EmergencyWorkflowRequest) -> EmergencyW
         patient_age=request.patient_age,
         patient_gender=request.patient_gender,
         vital_signs=request.vital_signs,
-        location=request.patient_location.model_dump()
+        location=request.patient_location
     )
     triage_res = triage_agent.evaluate_triage(triage_req)
     steps.append(
@@ -198,6 +215,27 @@ def run_full_emergency_workflow(request: EmergencyWorkflowRequest) -> EmergencyW
         )
     )
 
+    # STEP 6: Nearby Real Hospitals Discovery (Non-LLM Tool)
+    nearby_hospitals = discover_nearby_hospitals(
+        user_lat=patient_lat,
+        user_lng=patient_lng,
+        radius_km=request.nearby_radius_km,
+        candidate_hospitals=hospitals_input
+    )
+
+    steps.append(
+        WorkflowStepLog(
+            step_number=6,
+            step_name="Nearby Real Hospitals Discovered",
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            status="completed",
+            details={
+                "nearby_count": len(nearby_hospitals),
+                "closest_hospital": nearby_hospitals[0].name if nearby_hospitals else "None in radius"
+            }
+        )
+    )
+
     # Assemble Final Structured Response
     decision_summary = (
         f"Autonomous Emergency Response Orchestrated: [{triage_res.urgency}] {triage_res.category} triaged -> "
@@ -207,7 +245,7 @@ def run_full_emergency_workflow(request: EmergencyWorkflowRequest) -> EmergencyW
         f"1. Triage classified patient symptoms as {triage_res.category} requiring {triage_res.required_specialty}.\n"
         f"2. Hospital Matching evaluated facility options and selected {selected_hospital.hospital_name} ({selected_hospital.suitability_reason}).\n"
         f"3. Ambulance Dispatch assigned vehicle {dispatch.vehicle_number} (ETA ~{dispatch.estimated_patient_eta_minutes} mins).\n"
-        f"4. Automated alert notification generated for target hospital emergency dashboard."
+        f"4. Discovered {len(nearby_hospitals)} nearby hospital(s) around user coordinates ({patient_lat}, {patient_lng}) for direct travel option."
     )
 
     log_workflow_event("Emergency Workflow", 6, "Workflow Execution Completed Successfully")
@@ -220,11 +258,14 @@ def run_full_emergency_workflow(request: EmergencyWorkflowRequest) -> EmergencyW
         data_used=[
             {"triage": triage_res.category, "specialty": triage_res.required_specialty},
             {"evaluated_hospitals_count": len(evaluated_hospitals), "selected": selected_hospital.hospital_name},
-            {"evaluated_ambulances_count": len(available_ambulances), "selected_unit": dispatch.vehicle_number}
+            {"evaluated_ambulances_count": len(available_ambulances), "selected_unit": dispatch.vehicle_number},
+            {"nearby_hospitals_count": len(nearby_hospitals)}
         ],
         workflow_steps=steps,
         triage=triage_res,
         selected_hospital=selected_hospital,
         assigned_ambulance=dispatch,
-        hospital_notification=notification
+        hospital_notification=notification,
+        nearby_hospitals=nearby_hospitals,
+        direct_travel_disclaimer="Nearby hospitals are shown for direct access if feasible. For serious or life-threatening emergencies, follow appropriate emergency medical guidance and await ambulance response."
     )

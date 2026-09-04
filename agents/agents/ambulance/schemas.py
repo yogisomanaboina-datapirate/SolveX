@@ -35,6 +35,29 @@ class AmbulanceInfo(BaseModel):
     paramedic_level: str = Field(default="ADVANCED", description="Paramedic qualification level")
 
 
+class NearbyHospitalInfo(BaseModel):
+    """Nearby hospital facility info discovered around user GPS coordinates."""
+    id: str = Field(description="Hospital ID", examples=["HOSP-01"])
+    name: str = Field(description="Hospital name", examples=["Apollo Emergency Hospital Jubilee Hills"])
+    distance_km: float = Field(description="Distance from user GPS in kilometers", examples=[3.2])
+    address: str = Field(description="Street address or location", examples=["Jubilee Hills, Hyderabad"])
+    location: LocationSchema = Field(description="GPS coordinates of hospital")
+    google_maps_directions_url: str = Field(
+        description="Clickable Google Maps navigation link",
+        examples=["https://www.google.com/maps/dir/?api=1&destination=17.4325,78.4071"]
+    )
+    specialties: List[str] = Field(default_factory=list, description="Medical specialties available")
+    icu_beds_available: Optional[int] = Field(default=None, description="ICU beds available")
+    er_beds_available: Optional[int] = Field(default=None, description="ER beds available")
+
+
+class NearbyHospitalsRequest(BaseModel):
+    """Request payload for standalone nearby hospital search."""
+    user_location: LocationSchema = Field(default_factory=LocationSchema)
+    radius_km: float = Field(default=25.0, description="Search radius in kilometers")
+    candidate_hospitals: Optional[List[HospitalInfo]] = Field(default=None)
+
+
 class TriageRequest(BaseModel):
     """Emergency triage evaluation request payload."""
     symptoms: str = Field(
@@ -159,6 +182,7 @@ class EmergencyWorkflowRequest(BaseModel):
         default=None,
         description="Optional list of candidate ambulances provided by Backend. If omitted, default dataset is used."
     )
+    nearby_radius_km: float = Field(default=25.0, description="Radius in km for nearby real hospital discovery")
 
 
 class EmergencyWorkflowResponse(BaseDecisionResponse):
@@ -167,3 +191,11 @@ class EmergencyWorkflowResponse(BaseDecisionResponse):
     selected_hospital: HospitalSelection
     assigned_ambulance: SimulatedAmbulanceDispatch
     hospital_notification: HospitalNotificationPayload
+    nearby_hospitals: List[NearbyHospitalInfo] = Field(
+        default_factory=list,
+        description="Discovered nearby hospitals around user GPS coordinates for direct access option"
+    )
+    direct_travel_disclaimer: str = Field(
+        default="Nearby hospitals are shown for direct access if feasible. For serious emergencies, follow appropriate emergency medical guidance.",
+        description="Safety guidance wording regarding self-travel vs ambulance"
+    )

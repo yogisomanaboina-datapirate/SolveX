@@ -1,9 +1,14 @@
 from fastapi.testclient import TestClient
 from main import app
 from tools.ambulance_tools import evaluate_available_ambulances
-from tools.hospital_tools import calculate_haversine_distance, evaluate_hospital_suitability
-from agents.ambulance.schemas import EmergencyWorkflowRequest, HospitalInfo, LocationSchema
-from workflows.emergency import run_full_emergency_workflow
+from tools.hospital_tools import calculate_haversine_distance, discover_nearby_hospitals, evaluate_hospital_suitability
+from agents.ambulance.schemas import (
+    EmergencyWorkflowRequest,
+    HospitalInfo,
+    LocationSchema,
+    NearbyHospitalsRequest,
+)
+from workflows.emergency import run_full_emergency_workflow, run_nearby_hospitals_workflow
 
 client = TestClient(app)
 
@@ -65,6 +70,36 @@ def test_dynamic_hospital_availability_reevaluation():
     assert reevaluated[0]["hospital_id"] == "HOSP-B"
 
 
+def test_nearby_hospital_discovery_with_gps():
+    req = NearbyHospitalsRequest(
+        user_location=LocationSchema(lat=17.4486, lng=78.3908, address="Madhapur, Hyderabad"),
+        radius_km=15.0
+    )
+    nearby = run_nearby_hospitals_workflow(req)
+
+    assert len(nearby) >= 1
+    assert nearby[0].distance_km >= 0.0
+    assert "https://www.google.com/maps/dir/" in nearby[0].google_maps_directions_url
+    assert nearby[0].name != ""
+
+
+def test_nearby_hospital_endpoint_http():
+    payload = {
+        "user_location": {
+            "lat": 17.4486,
+            "lng": 78.3908,
+            "address": "Madhapur, Hyderabad"
+        },
+        "radius_km": 20.0
+    }
+    response = client.post("/agent/nearby-hospitals", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert "google_maps_directions_url" in data[0]
+
+
 def test_full_emergency_workflow_execution():
     request = EmergencyWorkflowRequest(
         symptoms="Severe chest pain radiating to left arm, sweating, shortness of breath",
@@ -78,8 +113,11 @@ def test_full_emergency_workflow_execution():
     assert response.triage.required_specialty == "CARDIOLOGY"
     assert response.selected_hospital.hospital_id != ""
     assert response.assigned_ambulance.vehicle_number != ""
+    assert response.assigned_ambulance.dispatch_status == "SIMULATED_DISPATCHED"
     assert response.hospital_notification.alert_message != ""
-    assert len(response.workflow_steps) >= 5
+    assert len(response.nearby_hospitals) >= 1
+    assert "direct access if feasible" in response.direct_travel_disclaimer.lower()
+    assert len(response.workflow_steps) == 6
 
 
 def test_emergency_endpoint_http():
@@ -101,4 +139,7 @@ def test_emergency_endpoint_http():
     assert "selected_hospital" in data
     assert "assigned_ambulance" in data
     assert "hospital_notification" in data
-    assert len(data["workflow_steps"]) >= 5
+    assert "nearby_hospitals" in data
+    assert len(data["nearby_hospitals"]) >= 1
+    assert "direct_travel_disclaimer" in data
+    assert len(data["workflow_steps"]) == 6

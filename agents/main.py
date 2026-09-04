@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import List
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
@@ -9,15 +10,23 @@ from core.featherless import featherless_client
 from agents.ambulance.schemas import (
     EmergencyWorkflowRequest,
     EmergencyWorkflowResponse,
+    NearbyHospitalInfo,
+    NearbyHospitalsRequest,
     TriageRequest,
     TriageResponse,
 )
 from agents.beds.schemas import BedOptimizationRequest, BedOptimizationResponse
+from agents.chat.schemas import ChatbotRequest, ChatbotResponse
 from agents.insurance.schemas import ClaimAnalysisRequest, ClaimAnalysisResponse
 from agents.medication.schemas import MedicationScheduleRequest, MedicationScheduleResponse
 from agents.records.schemas import ReportAnalyzerRequest, ReportAnalyzerResponse
 from workflows.beds import run_bed_optimizer_workflow
-from workflows.emergency import run_full_emergency_workflow, run_triage_workflow
+from workflows.chat import run_chatbot_workflow
+from workflows.emergency import (
+    run_full_emergency_workflow,
+    run_nearby_hospitals_workflow,
+    run_triage_workflow,
+)
 from workflows.insurance import run_claims_workflow
 from workflows.medication import run_scheduler_workflow
 from workflows.records import run_report_analyzer_workflow
@@ -86,6 +95,15 @@ async def test_featherless_endpoint():
     return featherless_client.test_connection()
 
 
+@app.post("/agent/chat", response_model=ChatbotResponse, tags=["Chatbot"])
+async def chatbot_endpoint(request: ChatbotRequest):
+    """
+    LifeLink AI Conversational Health Assistant Chatbot Endpoint.
+    Answers general health questions, medical queries, and provides personalized assistance when patient context is provided by Backend.
+    """
+    return run_chatbot_workflow(request)
+
+
 @app.post("/agent/triage", response_model=TriageResponse, tags=["Emergency"])
 async def triage_endpoint(request: TriageRequest):
     """
@@ -99,9 +117,18 @@ async def triage_endpoint(request: TriageRequest):
 async def emergency_workflow_endpoint(request: EmergencyWorkflowRequest):
     """
     Full End-to-End Autonomous Emergency Response Multi-Agent Workflow Endpoint.
-    Executes Triage -> Hospital Matching -> Ambulance Dispatch -> Hospital Notification.
+    Executes Triage -> Hospital Matching -> Ambulance Dispatch -> Hospital Notification -> Nearby Real Hospitals Discovery.
     """
     return run_full_emergency_workflow(request)
+
+
+@app.post("/agent/nearby-hospitals", response_model=List[NearbyHospitalInfo], tags=["Emergency"])
+async def nearby_hospitals_endpoint(request: NearbyHospitalsRequest):
+    """
+    Nearby Hospital Discovery Endpoint (Fast Non-LLM Geographic Search).
+    Discovers nearby real hospitals around user's GPS coordinates, sorts by distance, and generates Google Maps navigation links.
+    """
+    return run_nearby_hospitals_workflow(request)
 
 
 @app.post("/agent/claims", response_model=ClaimAnalysisResponse, tags=["Insurance"])
@@ -138,13 +165,6 @@ async def report_analyzer_endpoint(request: ReportAnalyzerRequest):
     Analyzes supplied medical report text, extracts test parameters and key findings, and provides patient-friendly structured clinical insights.
     """
     return run_report_analyzer_workflow(request)
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

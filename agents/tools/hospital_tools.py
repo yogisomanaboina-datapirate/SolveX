@@ -1,5 +1,6 @@
 import math
 from typing import Any, Dict, List, Optional
+from agents.ambulance.schemas import LocationSchema, NearbyHospitalInfo
 
 
 def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -53,7 +54,6 @@ def evaluate_hospital_suitability(
 
         icu_beds = h.get("icu_beds_available", 0)
         er_beds = h.get("er_beds_available", 0)
-        total_relevant_beds = icu_beds + er_beds
 
         # Suitability Score formula (0-100)
         score = 100.0
@@ -89,3 +89,47 @@ def evaluate_hospital_suitability(
     # Sort descending by suitability score, then ascending by distance
     evaluated.sort(key=lambda x: (x["suitability_score"], -x["distance_km"]), reverse=True)
     return evaluated
+
+
+def discover_nearby_hospitals(
+    user_lat: float,
+    user_lng: float,
+    radius_km: float = 25.0,
+    candidate_hospitals: Optional[List[Dict[str, Any]]] = None
+) -> List[NearbyHospitalInfo]:
+    """
+    Discover nearby real hospitals around user's GPS coordinates.
+    Sorts by distance ascending and generates Google Maps navigation links.
+    """
+    if not candidate_hospitals:
+        return []
+
+    nearby: List[NearbyHospitalInfo] = []
+
+    for h in candidate_hospitals:
+        loc = h.get("location", {})
+        h_lat = loc.get("lat", user_lat)
+        h_lng = loc.get("lng", user_lng)
+        addr = loc.get("address", "Nearby Address")
+
+        dist = calculate_haversine_distance(user_lat, user_lng, h_lat, h_lng)
+
+        if dist <= radius_km:
+            maps_url = f"https://www.google.com/maps/dir/?api=1&destination={h_lat},{h_lng}"
+            nearby.append(
+                NearbyHospitalInfo(
+                    id=h.get("id", "HOSP-00"),
+                    name=h.get("name", "Hospital"),
+                    distance_km=dist,
+                    address=addr,
+                    location=LocationSchema(lat=h_lat, lng=h_lng, address=addr),
+                    google_maps_directions_url=maps_url,
+                    specialties=h.get("specialties", []),
+                    icu_beds_available=h.get("icu_beds_available"),
+                    er_beds_available=h.get("er_beds_available")
+                )
+            )
+
+    # Sort by distance ascending (closest hospital first)
+    nearby.sort(key=lambda x: x.distance_km)
+    return nearby
