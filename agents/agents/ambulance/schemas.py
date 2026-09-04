@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 from core.schemas import BaseDecisionResponse, WorkflowStepLog
 
 
@@ -56,11 +56,53 @@ class TriageRequest(BaseModel):
 
 class TriageResponse(BaseDecisionResponse):
     """Emergency triage evaluation structured AI output."""
-    urgency: str = Field(description="Triage urgency level: CRITICAL, HIGH, MEDIUM, LOW", examples=["HIGH"])
-    severity: str = Field(description="Clinical severity rating: CRITICAL, HIGH, MODERATE, LOW", examples=["HIGH"])
-    category: str = Field(description="Emergency classification category", examples=["CARDIAC_EMERGENCY"])
-    required_specialty: str = Field(description="Required medical department at hospital", examples=["CARDIOLOGY"])
-    recommended_action: str = Field(description="Immediate coordination action", examples=["IMMEDIATE_AMBULANCE_DISPATCH"])
+    decision: str = Field(
+        default="Emergency triage completed based on clinical symptoms.",
+        validation_alias=AliasChoices("decision", "summary_decision", "summary"),
+        description="Primary summary decision reached by the agent"
+    )
+    reasoning: str = Field(
+        default="Patient symptoms evaluated against emergency triage protocols.",
+        validation_alias=AliasChoices("reasoning", "clinical_reasoning", "rationale"),
+        description="Step-by-step rationale explaining how the decision was reached"
+    )
+    confidence: float = Field(
+        default=0.90,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices("confidence", "confidence_score", "score"),
+        description="Confidence score in the coordination recommendation (0.0 to 1.0)"
+    )
+    next_action: str = Field(
+        default="HOSPITAL_MATCHING",
+        validation_alias=AliasChoices("next_action", "recommended_next_step"),
+        description="Recommended next workflow or backend execution action"
+    )
+    urgency: str = Field(
+        validation_alias=AliasChoices("urgency", "clinical_urgency", "urgency_level"),
+        description="Triage urgency level: CRITICAL, HIGH, MEDIUM, LOW",
+        examples=["HIGH"]
+    )
+    severity: str = Field(
+        validation_alias=AliasChoices("severity", "clinical_severity", "severity_level"),
+        description="Clinical severity rating: CRITICAL, HIGH, MODERATE, LOW",
+        examples=["HIGH"]
+    )
+    category: str = Field(
+        validation_alias=AliasChoices("category", "emergency_category", "triage_category"),
+        description="Emergency classification category",
+        examples=["CARDIAC_EMERGENCY"]
+    )
+    required_specialty: str = Field(
+        validation_alias=AliasChoices("required_specialty", "specialty", "needed_specialty"),
+        description="Required medical department at hospital",
+        examples=["CARDIOLOGY"]
+    )
+    recommended_action: str = Field(
+        validation_alias=AliasChoices("recommended_action", "coordination_action", "action"),
+        description="Immediate coordination action",
+        examples=["IMMEDIATE_AMBULANCE_DISPATCH"]
+    )
 
 
 class HospitalSelection(BaseModel):

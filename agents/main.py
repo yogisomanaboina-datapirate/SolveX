@@ -12,7 +12,11 @@ from agents.ambulance.schemas import (
     TriageRequest,
     TriageResponse,
 )
+from agents.beds.schemas import BedOptimizationRequest, BedOptimizationResponse
+from agents.insurance.schemas import ClaimAnalysisRequest, ClaimAnalysisResponse
+from workflows.beds import run_bed_optimizer_workflow
 from workflows.emergency import run_full_emergency_workflow, run_triage_workflow
+from workflows.insurance import run_claims_workflow
 
 
 @asynccontextmanager
@@ -94,6 +98,26 @@ async def emergency_workflow_endpoint(request: EmergencyWorkflowRequest):
     Executes Triage -> Hospital Matching -> Ambulance Dispatch -> Hospital Notification.
     """
     return run_full_emergency_workflow(request)
+
+
+@app.post("/agent/claims", response_model=ClaimAnalysisResponse, tags=["Insurance"])
+async def claims_endpoint(request: ClaimAnalysisRequest):
+    """
+    Insurance Claim & Policy Assistance Endpoint.
+    Analyzes insurance queries, verifies backend claim records, calculates coverage estimates, and provides guided claim assistance.
+    """
+    return run_claims_workflow(request)
+
+
+@app.post("/agent/bed-optimizer", response_model=BedOptimizationResponse, tags=["Beds"])
+async def bed_optimizer_endpoint(request: BedOptimizationRequest):
+    """
+    Bed Optimization & Capacity Scheduling Endpoint.
+    Evaluates real-time hospital bed inventories, predictive capacity surges, and specialty alignment to recommend optimal bed allocations.
+    """
+    return run_bed_optimizer_workflow(request)
+
+
 
 
 

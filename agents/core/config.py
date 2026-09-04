@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # Featherless.ai Settings
     featherless_api_key: Optional[str] = None
-    featherless_model: str = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+    featherless_model: str = "Qwen/Qwen2.5-7B-Instruct"
     featherless_base_url: str = "https://api.featherless.ai/v1"
     
     # Service Configuration
