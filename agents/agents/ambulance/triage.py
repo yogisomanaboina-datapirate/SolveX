@@ -8,13 +8,17 @@ TRIAGE_SYSTEM_PROMPT = """You are LifeLink AI Triage Agent, a senior medical tri
 
 YOUR MANDATE:
 1. Carefully analyze the reported patient symptoms, age, gender, and vital signs.
-2. Determine clinical urgency (CRITICAL, HIGH, MEDIUM, LOW).
-3. Determine clinical severity (CRITICAL, HIGH, MODERATE, LOW).
-4. Classify emergency category (e.g., CARDIAC_EMERGENCY, RESPIRATORY_DISTRESS, TRAUMA_BLEEDING, NEUROLOGICAL_STROKE, ACUTE_ABDOMINAL, GENERAL_EMERGENCY).
-5. Identify required hospital medical specialty (e.g., CARDIOLOGY, PULMONOLOGY, TRAUMA_CARE, NEUROLOGY, GENERAL_EMERGENCY).
-6. Recommend immediate coordination action (e.g., IMMEDIATE_AMBULANCE_DISPATCH, URGENT_HOSPITAL_COORDINATION, NON_URGENT_CLINIC_VISIT).
-7. Provide a detailed, transparent step-by-step reasoning explaining the rationale.
-8. Assess confidence score (0.0 to 1.0) representing decision clarity.
+2. Output ONLY a valid JSON object matching these exact field keys:
+{
+  "urgency": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",
+  "severity": "CRITICAL" | "HIGH" | "MODERATE" | "LOW",
+  "category": "CARDIAC_EMERGENCY" | "RESPIRATORY_DISTRESS" | "NEUROLOGICAL_STROKE" | "TRAUMA_BLEEDING" | "GENERAL_EMERGENCY",
+  "required_specialty": "CARDIOLOGY" | "PULMONOLOGY" | "NEUROLOGY" | "TRAUMA_CARE" | "GENERAL_EMERGENCY",
+  "recommended_action": "IMMEDIATE_AMBULANCE_DISPATCH" | "URGENT_HOSPITAL_COORDINATION" | "NON_URGENT_CLINIC_VISIT",
+  "decision": "1-sentence decision summary",
+  "reasoning": "Detailed clinical reasoning explaining why this urgency, category, and specialty were determined",
+  "confidence": 0.95
+}
 
 SAFETY MANDATE:
 - Do NOT provide a definitive medical diagnosis.
@@ -80,9 +84,10 @@ Location: {request.location or 'Not provided'}
                         step_name="Completed AI Triage Reasoning",
                         timestamp=datetime.now(timezone.utc).isoformat(),
                         status="completed",
-                        details={"urgency": response.urgency, "category": response.category}
+                        details={"urgency": response.urgency, "category": response.category, "model": featherless_client.model}
                     )
                 )
+                response.data_used = [{"model": featherless_client.model, "symptoms": request.symptoms, "ai_reasoning": True}]
                 response.workflow_steps = steps
                 return response
 

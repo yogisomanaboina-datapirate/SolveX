@@ -1,5 +1,5 @@
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class HealthResponse(BaseModel):
@@ -30,7 +30,11 @@ class BaseDecisionResponse(BaseModel):
         le=1.0,
         description="Confidence score in the coordination recommendation (0.0 to 1.0)"
     )
-    next_action: str = Field(description="Recommended next workflow or backend execution action")
+    next_action: str = Field(
+        default="EXECUTE_BACKEND_ACTION",
+        validation_alias=AliasChoices("next_action", "recommended_action", "action"),
+        description="Recommended next workflow or backend execution action"
+    )
     data_used: List[Any] = Field(default_factory=list, description="Summary of tools, datasets, or inputs evaluated")
     workflow_steps: List[WorkflowStepLog] = Field(
         default_factory=list,
