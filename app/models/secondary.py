@@ -65,3 +65,74 @@ class SimulationResponse(BaseModel):
     success: bool = True
     message: str
     path: List[Dict[str, float]]
+
+# Bed Optimization Models
+class BedOptimizeRequest(BaseModel):
+    hospitalId: Optional[str] = Field(None, json_schema_extra={"example": "hosp_1"})
+    requestedBedType: str = Field("ICU", json_schema_extra={"example": "ICU"})
+    patientUrgency: str = Field("HIGH", json_schema_extra={"example": "HIGH"})
+    requiredSpecialty: str = Field("CARDIOLOGY", json_schema_extra={"example": "CARDIOLOGY"})
+
+class BedOptimizeData(BaseModel):
+    recommendedHospitalId: str
+    recommendedHospitalName: str
+    allocatedBedType: str
+    bedsAvailable: int
+    aiReasoning: str
+    confidence: float
+
+class BedOptimizeResponse(BaseModel):
+    success: bool = True
+    data: BedOptimizeData
+
+# Medication Scheduling Models
+class PrescriptionMedicationInput(BaseModel):
+    name: str = Field(..., json_schema_extra={"example": "Amoxicillin"})
+    dosage: str = Field(..., json_schema_extra={"example": "500mg"})
+    frequency: str = Field("Twice daily", json_schema_extra={"example": "Twice daily"})
+    mealRelationship: Optional[str] = Field("AFTER_MEAL", json_schema_extra={"example": "AFTER_MEAL"})
+    durationDays: Optional[int] = Field(7, json_schema_extra={"example": 7})
+
+class MedicationScheduleCreateRequest(BaseModel):
+    patientId: Optional[str] = Field(None, json_schema_extra={"example": "user_123"})
+    medications: List[PrescriptionMedicationInput]
+    wakeTime: Optional[str] = Field("08:00", json_schema_extra={"example": "08:00"})
+    sleepTime: Optional[str] = Field("22:00", json_schema_extra={"example": "22:00"})
+    mealTimes: Optional[Dict[str, str]] = Field(default_factory=lambda: {"breakfast": "08:30", "lunch": "13:00", "dinner": "20:00"})
+
+class MedicationScheduleResultData(BaseModel):
+    patientId: str
+    scheduledReminders: List[Dict[str, Any]]
+    conflictsDetected: List[Dict[str, Any]]
+    hasConflicts: bool
+    notificationPayloads: List[Dict[str, Any]]
+    aiReasoning: str
+    confidence: float
+    disclaimer: str
+
+class MedicationScheduleResultResponse(BaseModel):
+    success: bool = True
+    data: MedicationScheduleResultData
+
+# Medical Report Analyzer Models
+class ReportAnalyzeRequest(BaseModel):
+    reportText: str = Field(..., json_schema_extra={"example": "CBC Report: Hemoglobin 14.2 g/dL, WBC 6500"})
+    reportTitle: Optional[str] = Field("Medical Lab Report", json_schema_extra={"example": "Annual CBC"})
+    reportDate: Optional[str] = Field(None, json_schema_extra={"example": "2026-08-10"})
+    previousReports: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+
+class ReportAnalyzeResponse(BaseModel):
+    success: bool = True
+    data: Dict[str, Any]
+
+# Chat Assistant Models
+class ChatMessageRequest(BaseModel):
+    message: str = Field(..., json_schema_extra={"example": "What is hemoglobin?"})
+    patientProfile: Optional[Dict[str, Any]] = Field(default=None)
+    conversationHistory: Optional[List[Dict[str, str]]] = Field(default_factory=list)
+
+class ChatMessageResponse(BaseModel):
+    success: bool = True
+    data: Dict[str, Any]
+
+

@@ -67,15 +67,20 @@ class HospitalBedAllocation(BaseModel):
 class BedOptimizationResponse(BaseDecisionResponse):
     """Structured Bed Optimization AI Decision Output."""
     decision: str = Field(
+        default="Recommend allocating bed based on inventory and urgency.",
         validation_alias=AliasChoices("decision", "summary"),
         description="Summary bed allocation recommendation"
     )
     reasoning: str = Field(
+        default="Bed allocation optimized based on capacity and urgency.",
         validation_alias=AliasChoices("reasoning", "rationale"),
         description="Detailed predictive and clinical reasoning"
     )
     confidence: float = Field(default=0.92, description="Recommendation confidence score")
-    recommended_allocation: HospitalBedAllocation = Field(description="Optimal hospital bed allocation recommendation")
+    recommended_allocation: Optional[HospitalBedAllocation] = Field(
+        default=None,
+        description="Optimal hospital bed allocation recommendation"
+    )
     alternative_allocations: List[HospitalBedAllocation] = Field(
         default_factory=list,
         description="Ranked alternative hospital bed options"

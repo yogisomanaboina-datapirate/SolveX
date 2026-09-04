@@ -1,3 +1,14 @@
+import sys
+from pathlib import Path
+
+# Ensure agents directory is in Python path for root or module execution
+AGENTS_DIR = Path(__file__).resolve().parent
+INNER_AGENTS_DIR = AGENTS_DIR / "agents"
+if str(AGENTS_DIR) not in sys.path:
+    sys.path.insert(0, str(AGENTS_DIR))
+if str(INNER_AGENTS_DIR) not in sys.path:
+    sys.path.insert(0, str(INNER_AGENTS_DIR))
+
 from contextlib import asynccontextmanager
 from typing import List
 from fastapi import FastAPI
@@ -7,19 +18,34 @@ from core.errors import register_error_handlers
 from core.logging import logger
 from core.schemas import HealthResponse
 from core.featherless import featherless_client
-from agents.ambulance.schemas import (
-    EmergencyWorkflowRequest,
-    EmergencyWorkflowResponse,
-    NearbyHospitalInfo,
-    NearbyHospitalsRequest,
-    TriageRequest,
-    TriageResponse,
-)
-from agents.beds.schemas import BedOptimizationRequest, BedOptimizationResponse
-from agents.chat.schemas import ChatbotRequest, ChatbotResponse
-from agents.insurance.schemas import ClaimAnalysisRequest, ClaimAnalysisResponse
-from agents.medication.schemas import MedicationScheduleRequest, MedicationScheduleResponse
-from agents.records.schemas import ReportAnalyzerRequest, ReportAnalyzerResponse
+try:
+    from agents.ambulance.schemas import (
+        EmergencyWorkflowRequest,
+        EmergencyWorkflowResponse,
+        NearbyHospitalInfo,
+        NearbyHospitalsRequest,
+        TriageRequest,
+        TriageResponse,
+    )
+    from agents.beds.schemas import BedOptimizationRequest, BedOptimizationResponse
+    from agents.chat.schemas import ChatbotRequest, ChatbotResponse
+    from agents.insurance.schemas import ClaimAnalysisRequest, ClaimAnalysisResponse
+    from agents.medication.schemas import MedicationScheduleRequest, MedicationScheduleResponse
+    from agents.records.schemas import ReportAnalyzerRequest, ReportAnalyzerResponse
+except ModuleNotFoundError:
+    from ambulance.schemas import (
+        EmergencyWorkflowRequest,
+        EmergencyWorkflowResponse,
+        NearbyHospitalInfo,
+        NearbyHospitalsRequest,
+        TriageRequest,
+        TriageResponse,
+    )
+    from beds.schemas import BedOptimizationRequest, BedOptimizationResponse
+    from chat.schemas import ChatbotRequest, ChatbotResponse
+    from insurance.schemas import ClaimAnalysisRequest, ClaimAnalysisResponse
+    from medication.schemas import MedicationScheduleRequest, MedicationScheduleResponse
+    from records.schemas import ReportAnalyzerRequest, ReportAnalyzerResponse
 from workflows.beds import run_bed_optimizer_workflow
 from workflows.chat import run_chatbot_workflow
 from workflows.emergency import (
@@ -38,6 +64,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting LifeLink AI Agent Service...")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Featherless Configured: {settings.is_featherless_configured}")
+    
+    # Diagnostic: Print all registered routes
+    routes_summary = [f"{r.path} [{','.join(r.methods)}]" for r in app.routes if hasattr(r, 'methods')]
+    logger.info(f"Registered Agent Routes ({len(routes_summary)}): {routes_summary}")
+    print(f"REGISTERED AGENT ROUTES ({len(routes_summary)}): {routes_summary}", flush=True)
     yield
     logger.info("Shutting down LifeLink AI Agent Service...")
 

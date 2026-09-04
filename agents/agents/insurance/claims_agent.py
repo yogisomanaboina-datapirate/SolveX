@@ -17,7 +17,9 @@ YOUR MANDATE:
 3. Formulate transparent, helpful insurance coordination guidance.
 4. Output ONLY a valid JSON object matching these exact keys:
 {
-  "assistance_type": "EXISTING_CLAIM_STATUS" | "NEW_CLAIM_FILING_GUIDANCE" | "COVERAGE_VERIFICATION" | "PRE_AUTH_ASSISTANCE",
+  "claim_exists": true,
+  "matched_claim_id": "CLM-4401",
+  "assistance_type": "EXISTING_CLAIM_STATUS",
   "decision": "Summary decision regarding insurance claim / assistance status",
   "reasoning": "Detailed rationale explaining policy coverage, matched claim status, and financial breakdown",
   "recommended_next_step": "Actionable step for the user or backend workflow execution",

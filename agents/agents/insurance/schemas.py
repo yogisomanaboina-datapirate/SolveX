@@ -58,15 +58,20 @@ class ClaimMatchResult(BaseModel):
 
 class ClaimAnalysisResponse(BaseDecisionResponse):
     """Structured Insurance & Claims AI Decision Output."""
-    claim_exists: bool = Field(description="Flag indicating whether a matching claim exists in Backend source of truth")
+    claim_exists: bool = Field(default=False, description="Flag indicating whether a matching claim exists in Backend source of truth")
     matched_claim_id: Optional[str] = Field(default=None, description="Matched claim ID if found")
     matched_claim_status: Optional[str] = Field(default=None, description="Status of matched claim")
     assistance_type: str = Field(
+        default="NEW_CLAIM_FILING_GUIDANCE",
         description="Assistance category: EXISTING_CLAIM_STATUS, NEW_CLAIM_FILING_GUIDANCE, COVERAGE_VERIFICATION, PRE_AUTH_ASSISTANCE",
         examples=["EXISTING_CLAIM_STATUS"]
     )
     coverage_estimation: Optional[Dict[str, Any]] = Field(default=None, description="Coverage estimation calculation")
-    recommended_next_step: str = Field(description="Recommended next step for user or backend execution")
+    recommended_next_step: str = Field(
+        default="Consult insurance provider desk for claim submission.",
+        validation_alias=AliasChoices("recommended_next_step", "next_step", "next_action"),
+        description="Recommended next step for user or backend execution"
+    )
     disclaimer: str = Field(
         default="Insurance analysis is provided for coordination assistance. Official claim settlement is executed by the insurance provider.",
         description="Insurance legal disclaimer"
