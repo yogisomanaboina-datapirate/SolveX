@@ -10,3 +10,4 @@ firebase_service_account.json
 .venv/
 agents/.venv/
 node_modules/
+backend/firebase-service-account.json
