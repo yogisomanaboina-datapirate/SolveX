@@ -14,9 +14,11 @@ from agents.ambulance.schemas import (
 )
 from agents.beds.schemas import BedOptimizationRequest, BedOptimizationResponse
 from agents.insurance.schemas import ClaimAnalysisRequest, ClaimAnalysisResponse
+from agents.medication.schemas import MedicationScheduleRequest, MedicationScheduleResponse
 from workflows.beds import run_bed_optimizer_workflow
 from workflows.emergency import run_full_emergency_workflow, run_triage_workflow
 from workflows.insurance import run_claims_workflow
+from workflows.medication import run_scheduler_workflow
 
 
 @asynccontextmanager
@@ -116,6 +118,16 @@ async def bed_optimizer_endpoint(request: BedOptimizationRequest):
     Evaluates real-time hospital bed inventories, predictive capacity surges, and specialty alignment to recommend optimal bed allocations.
     """
     return run_bed_optimizer_workflow(request)
+
+
+@app.post("/agent/scheduler", response_model=MedicationScheduleResponse, tags=["Medication"])
+async def scheduler_endpoint(request: MedicationScheduleRequest):
+    """
+    Medication & Tablet Reminder Scheduler Endpoint.
+    Parses doctor-prescribed medication instructions, generates daily intake reminder times, detects conflicts, and outputs notification payloads for Backend scheduling.
+    """
+    return run_scheduler_workflow(request)
+
 
 
 
