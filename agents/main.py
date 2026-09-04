@@ -15,10 +15,12 @@ from agents.ambulance.schemas import (
 from agents.beds.schemas import BedOptimizationRequest, BedOptimizationResponse
 from agents.insurance.schemas import ClaimAnalysisRequest, ClaimAnalysisResponse
 from agents.medication.schemas import MedicationScheduleRequest, MedicationScheduleResponse
+from agents.records.schemas import ReportAnalyzerRequest, ReportAnalyzerResponse
 from workflows.beds import run_bed_optimizer_workflow
 from workflows.emergency import run_full_emergency_workflow, run_triage_workflow
 from workflows.insurance import run_claims_workflow
 from workflows.medication import run_scheduler_workflow
+from workflows.records import run_report_analyzer_workflow
 
 
 @asynccontextmanager
@@ -127,6 +129,16 @@ async def scheduler_endpoint(request: MedicationScheduleRequest):
     Parses doctor-prescribed medication instructions, generates daily intake reminder times, detects conflicts, and outputs notification payloads for Backend scheduling.
     """
     return run_scheduler_workflow(request)
+
+
+@app.post("/agent/report-analyzer", response_model=ReportAnalyzerResponse, tags=["Records"])
+async def report_analyzer_endpoint(request: ReportAnalyzerRequest):
+    """
+    Medical Report Analyzer Endpoint.
+    Analyzes supplied medical report text, extracts test parameters and key findings, and provides patient-friendly structured clinical insights.
+    """
+    return run_report_analyzer_workflow(request)
+
 
 
 
