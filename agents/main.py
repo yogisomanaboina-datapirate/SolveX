@@ -6,8 +6,13 @@ from core.errors import register_error_handlers
 from core.logging import logger
 from core.schemas import HealthResponse
 from core.featherless import featherless_client
-from agents.ambulance.schemas import TriageRequest, TriageResponse
-from workflows.emergency import run_triage_workflow
+from agents.ambulance.schemas import (
+    EmergencyWorkflowRequest,
+    EmergencyWorkflowResponse,
+    TriageRequest,
+    TriageResponse,
+)
+from workflows.emergency import run_full_emergency_workflow, run_triage_workflow
 
 
 @asynccontextmanager
@@ -80,6 +85,16 @@ async def triage_endpoint(request: TriageRequest):
     Analyzes patient symptoms and vitals to determine urgency, severity, required medical specialty, and recommended coordination action.
     """
     return run_triage_workflow(request)
+
+
+@app.post("/agent/emergency", response_model=EmergencyWorkflowResponse, tags=["Emergency"])
+async def emergency_workflow_endpoint(request: EmergencyWorkflowRequest):
+    """
+    Full End-to-End Autonomous Emergency Response Multi-Agent Workflow Endpoint.
+    Executes Triage -> Hospital Matching -> Ambulance Dispatch -> Hospital Notification.
+    """
+    return run_full_emergency_workflow(request)
+
 
 
 
