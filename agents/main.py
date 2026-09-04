@@ -5,6 +5,7 @@ from core.config import settings
 from core.errors import register_error_handlers
 from core.logging import logger
 from core.schemas import HealthResponse
+from core.featherless import featherless_client
 from agents.ambulance.schemas import TriageRequest, TriageResponse
 from workflows.emergency import run_triage_workflow
 
@@ -63,6 +64,15 @@ async def health_check():
     )
 
 
+@app.get("/agent/test-featherless", tags=["Development"])
+async def test_featherless_endpoint():
+    """
+    Development-only Featherless API connectivity test endpoint.
+    Performs 1 real chat completion call to Featherless API when credentials are set.
+    """
+    return featherless_client.test_connection()
+
+
 @app.post("/agent/triage", response_model=TriageResponse, tags=["Emergency"])
 async def triage_endpoint(request: TriageRequest):
     """
@@ -70,6 +80,7 @@ async def triage_endpoint(request: TriageRequest):
     Analyzes patient symptoms and vitals to determine urgency, severity, required medical specialty, and recommended coordination action.
     """
     return run_triage_workflow(request)
+
 
 
 
